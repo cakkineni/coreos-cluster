@@ -25,11 +25,17 @@ func NewDOcean() *DOcean {
 }
 
 func (doc DOcean) ProvisionPMXCluster(params ClusterParams) PMXCluster {
+	println("\nProvisioning PMX Cluster in Digital Ocean")
 	cluster := PMXCluster{}
+	println("\nInitializing")
 	doc.initProvider()
+	println("\nLogging in to Digital Ocean")
 	doc.login()
+	println("\nProvisioning CoreOS cluster")
 	cluster.Cluster = doc.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
+	println("\nProvisioning Panamax Remote Agent")
 	cluster.Agent = doc.provisionPMXAgent(params.CloudConfigAgent)
+	println("\nLogging out")
 	doc.logout()
 	return cluster
 }
@@ -100,6 +106,7 @@ func (doc *DOcean) provisionCoreOSCluster(count int, cloudConfig string) []Serve
 
 	var coreOSServers []Server
 	for i := 0; i < count; i++ {
+		println("Provisioning Server ", i+1)
 		createReq.Name = "coreos-" + strconv.Itoa(i+1)
 		droplet := doc.createServer(createReq)
 		coreOSServers = append(coreOSServers, Server{Name: droplet.Droplet.Name, PublicIP: droplet.Droplet.Networks.V4[1].IPAddress, PrivateIP: droplet.Droplet.Networks.V4[0].IPAddress})
@@ -130,7 +137,9 @@ func (doc *DOcean) createServer(createRequest *godo.DropletCreateRequest) *godo.
 		panic(err)
 	}
 
+	println("Waiting for server creation to be complete..")
 	for {
+		print(".")
 		newDroplet, _, _ = doc.doClient.Droplets.Get(newDroplet.Droplet.ID)
 		if newDroplet.Droplet.Status == "active" {
 			break
