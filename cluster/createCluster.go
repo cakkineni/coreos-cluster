@@ -18,8 +18,10 @@ var (
 
 func main() {
 
+	println("Deploying PMX Cluster")
 	clp := provision.New(clusterType)
 
+	println("Generating Cloud Config")
 	cloudConfigCluster = createCloudConfigCluster()
 	privateKey, publicKey := createSSHKey()
 	cloudConfigAgent = createCloudConfigAgent(publicKey)
@@ -29,6 +31,7 @@ func main() {
 	clusterParams.CloudConfigAgent = cloudConfigAgent
 	clusterParams.CloudConfigCluster = cloudConfigCluster
 
+	println("Provising PMX Cluster")
 	cluster := clp.ProvisionPMXCluster(clusterParams)
 
 	fleetIP := cluster.Cluster[0].PrivateIP
@@ -38,6 +41,7 @@ func main() {
 	setKey("agent-fleet-api", fleetIP)
 	setKey("agent-public-ip", agentIP)
 
+	println("Provision Complete!!!")
 	fmt.Scanln()
 	time.Sleep(2000 * time.Hour)
 }

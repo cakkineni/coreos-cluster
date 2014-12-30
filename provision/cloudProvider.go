@@ -9,11 +9,11 @@ type CloudProvider interface {
 func New(providerType string) CloudProvider {
 	providerType = strings.ToLower(providerType)
 	switch providerType {
-	case "amz":
+	case "amazon":
 		return NewAmazon()
-	case "clc":
+	case "centurylink":
 		return NewCenturyLink()
-	case "docean":
+	case "digitalocean":
 		return NewDOcean()
 	case "brightbox":
 		return NewBrightBox()

@@ -23,12 +23,18 @@ func NewAmazon() *Amazon {
 }
 
 func (amz Amazon) ProvisionPMXCluster(params ClusterParams) PMXCluster {
+	println("\nProvisioning PMX Cluster in Amazon EC2")
 	pmxCluster := PMXCluster{}
+	println("\nInitializing")
 	amz.initProvider()
+	println("\nLogging in to EC2")
 	amz.login()
+	println("\nProvisioning CoreOS cluster")
+	pmxCluster.Cluster = amz.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
+	println("\nProvisioning Panamax Remote Agent")
 	agent := amz.provisionPMXAgent(params.CloudConfigAgent)
 	pmxCluster.Agent = agent
-	pmxCluster.Cluster = amz.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
+	println("\nLogging out")
 	amz.logout()
 	return pmxCluster
 }
@@ -52,7 +58,6 @@ func (amz *Amazon) initProvider() bool {
 }
 
 func (amz *Amazon) login() bool {
-	println("\nLogging in....")
 	auth, err := aws.EnvAuth()
 
 	if err != nil {
@@ -80,7 +85,8 @@ func (amz *Amazon) provisionCoreOSCluster(count int, cloudConfig string) []Serve
 
 	var coreOSServers []Server
 	for i := 0; i < count; i++ {
-		coreOSServers[i] = amz.createServer(createReq)
+		println("Provisioning Server ", i+1)
+		coreOSServers = append(coreOSServers, amz.createServer(createReq))
 	}
 	return coreOSServers
 }
@@ -108,7 +114,9 @@ func (amz *Amazon) createServer(createRequest *ec2.RunInstances) Server {
 	}
 
 	server := resp.Instances[0]
+	println("Waiting for server creation to be complete..")
 	for {
+		print(".")
 		time.Sleep(10 * time.Second)
 		resp, err := amz.amzClient.Instances([]string{server.InstanceId}, &ec2.Filter{})
 
