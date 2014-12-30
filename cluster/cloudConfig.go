@@ -9,7 +9,8 @@ import (
 
 func createCloudConfigCluster() string {
 	println("Create Cloud Config Cluster")
-	response, _ := http.Get("https://discovery.etcd.io/new")
+	httpClient := &http.Client{}
+	response, _ := httpClient.Get("https://discovery.etcd.io/new")
 	defer response.Body.Close()
 	contents, _ := ioutil.ReadAll(response.Body)
 	cloudConfig, _ := ioutil.ReadFile("cloud-config-init.yaml")

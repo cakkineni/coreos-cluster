@@ -19,7 +19,7 @@ type DOcean struct {
 	sshKeyID []interface{}
 }
 
-func (doc DOcean) New() *DOcean {
+func NewDOcean() *DOcean {
 	return new(DOcean)
 }
 
@@ -106,7 +106,7 @@ func (doc *DOcean) provisionCoreOSCluster(count int, cloudConfig string) []Serve
 	return coreOSServers
 }
 
-func (doc *DOcean) provisionPMXAgent(cloudConfig string) *Server {
+func (doc *DOcean) provisionPMXAgent(cloudConfig string) Server {
 	var createReq *godo.DropletCreateRequest
 	createReq = &godo.DropletCreateRequest{
 		Name:              "pmx-remote-agent",
@@ -118,7 +118,7 @@ func (doc *DOcean) provisionPMXAgent(cloudConfig string) *Server {
 		SSHKeys:           doc.sshKeyID,
 	}
 	server := doc.createServer(createReq)
-	return &Server{Name: server.Droplet.Name, PublicIP: server.Droplet.Networks.V4[1].IPAddress, PrivateIP: server.Droplet.Networks.V4[0].IPAddress}
+	return Server{Name: server.Droplet.Name, PublicIP: server.Droplet.Networks.V4[1].IPAddress, PrivateIP: server.Droplet.Networks.V4[0].IPAddress}
 }
 
 func (doc *DOcean) createServer(createRequest *godo.DropletCreateRequest) *godo.DropletRoot {

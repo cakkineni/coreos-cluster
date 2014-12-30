@@ -16,7 +16,6 @@ type CenturyLink struct {
 	clcApi            string
 	dhcpServerAlias   string
 	coreosServerAlias string
-	letters           []rune
 	createdDhcpName   string
 	location          string
 	networkName       string
@@ -28,14 +27,19 @@ type CenturyLink struct {
 	serverPassword    string
 	groupId           int
 	serverCount       int
+	httpUtil          HttpUtil
 }
 
-func (clc CenturyLink) New() *CenturyLink {
+var (
+	letters []rune
+)
+
+func NewCenturyLink() *CenturyLink {
 	cl := new(CenturyLink)
-	clc.clcApi = "https://api.tier3.com/rest"
-	clc.dhcpServerAlias = "DHCP"
-	clc.coreosServerAlias = "COREOS"
-	clc.letters = []rune("abcdefghijklmnopqrstuvwxyz")
+	cl.clcApi = "https://api.tier3.com/rest"
+	cl.dhcpServerAlias = "DHCP"
+	cl.coreosServerAlias = "COREOS"
+	letters = []rune("abcdefghijklmnopqrstuvwxyz")
 	return cl
 }
 
@@ -44,9 +48,7 @@ func (clc CenturyLink) ProvisionPMXCluster(params ClusterParams) PMXCluster {
 	clc.initProvider()
 	clc.login()
 	cluster.Cluster = clc.provisionCoreOSCluster(params.ServerCount)
-	cluster.Agent = new(Server)
-	cluster.Agent.Name = clc.createdDhcpName
-	cluster.Agent.PublicIP = clc.publicIP
+	cluster.Agent = Server{Name: clc.createdDhcpName, PublicIP: clc.publicIP}
 	return cluster
 }
 
@@ -63,6 +65,7 @@ func (clc *CenturyLink) initProvider() bool {
 	}
 
 	clc.groupName = fmt.Sprintf("%s-%s", clc.groupName, clc.randSeq(4))
+	clc.httpUtil = HttpUtil{APIEndPoint: clc.clcApi}
 	return true
 }
 
@@ -72,7 +75,7 @@ func (clc *CenturyLink) login() bool {
 		Password string
 	}{clc.apiKey, clc.apiPassword}
 
-	resp := postJSONData("/auth/logon", postData)
+	resp := clc.httpUtil.postJSONData("/auth/logon", postData)
 
 	var status struct {
 		success bool
@@ -87,7 +90,7 @@ func (clc *CenturyLink) login() bool {
 
 func (clc *CenturyLink) logout() bool {
 	println("\nLogging out...")
-	httpClient.Get(clc.clcApi + "/auth/logout")
+	clc.httpUtil.HttpClient.Get(clc.clcApi + "/auth/logout")
 	return true
 }
 
@@ -115,7 +118,7 @@ func (clc *CenturyLink) createGroup() int {
 	}{clc.location}
 
 	var parentId int
-	var resp = postJSONData("/Group/GetGroups/json", acctLocation)
+	var resp = clc.httpUtil.postJSONData("/Group/GetGroups/json", acctLocation)
 
 	var hwGroups struct {
 		AccountAlias   string
@@ -144,7 +147,7 @@ func (clc *CenturyLink) createGroup() int {
 		Description  string
 	}{clc.accountAlias, parentId, clc.groupName, "CoreOS Cluster"}
 
-	var respNewGroup = postJSONData("/Group/CreateHardwareGroup/json", postData)
+	var respNewGroup = clc.httpUtil.postJSONData("/Group/CreateHardwareGroup/json", postData)
 	var newGroup struct {
 		Group struct {
 			ID int
@@ -159,7 +162,7 @@ func (clc *CenturyLink) randSeq(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = clc.letters[rand.Intn(len(clc.letters))]
+		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
 }
@@ -171,7 +174,7 @@ func (clc *CenturyLink) getNetwork() string {
 		Location string
 	}{clc.location}
 
-	var resp = postJSONData("/Network/GetAccountNetworks/JSON", location)
+	var resp = clc.httpUtil.postJSONData("/Network/GetAccountNetworks/JSON", location)
 
 	var networks struct {
 		Networks []struct {
@@ -194,7 +197,7 @@ func (clc *CenturyLink) getNetwork() string {
 func (clc *CenturyLink) deployBlueprintServer(params interface{}) (BlueprintRequestStatus, string) {
 	var resp, serverName string
 	var reqStatus BlueprintRequestStatus
-	resp = postJSONData("/Blueprint/DeployBlueprint/", params)
+	resp = clc.httpUtil.postJSONData("/Blueprint/DeployBlueprint/", params)
 	serverName = ""
 	json.Unmarshal([]byte(resp), &reqStatus)
 	if reqStatus.Success {
@@ -251,7 +254,7 @@ func (clc *CenturyLink) createCoreOSServer() string {
 func (clc *CenturyLink) resizeDisk(coreosServer string) {
 	fmt.Printf("\nResizing %s", coreosServer)
 	params := fmt.Sprintf("{\"AccountAlias\": \"%s\", \"Name\": \"%s\", \"ScsiBusID\": \"0\", \"ScsiDeviceID\": \"2\", \"ResizeGuestDisk\": true, \"NewSizeGB\": 50 }", clc.accountAlias, coreosServer)
-	postJSONData("Server/ResizeDisk/json", params)
+	clc.httpUtil.postJSONData("Server/ResizeDisk/json", params)
 }
 
 func (clc *CenturyLink) addPublicIp() (bool, string) {
@@ -265,7 +268,7 @@ func (clc *CenturyLink) addPublicIp() (bool, string) {
 		AllowSSH       bool
 	}{clc.accountAlias, clc.createdDhcpName, clc.serverPassword, true}
 
-	resp := postJSONData("/Network/AddPublicIPAddress/json", postData)
+	resp := clc.httpUtil.postJSONData("/Network/AddPublicIPAddress/json", postData)
 
 	var reqStatus BlueprintRequestStatus
 	json.Unmarshal([]byte(resp), &reqStatus)
@@ -295,7 +298,7 @@ func (clc *CenturyLink) getDeploymentStatus(reqId int) BlueprintRequestStatus {
 	}{reqId, clc.location}
 
 	var reqStatus BlueprintRequestStatus
-	resp := postJSONData("/Blueprint/GetBlueprintStatus/json", postData)
+	resp := clc.httpUtil.postJSONData("/Blueprint/GetBlueprintStatus/json", postData)
 	fmt.Printf("\n%s", resp)
 	json.Unmarshal([]byte(resp), &reqStatus)
 	return reqStatus

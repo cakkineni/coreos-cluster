@@ -18,7 +18,7 @@ type Amazon struct {
 	amzClient *ec2.EC2
 }
 
-func (amz Amazon) New() *Amazon {
+func NewAmazon() *Amazon {
 	return new(Amazon)
 }
 
@@ -27,7 +27,7 @@ func (amz Amazon) ProvisionPMXCluster(params ClusterParams) PMXCluster {
 	amz.initProvider()
 	amz.login()
 	agent := amz.provisionPMXAgent(params.CloudConfigAgent)
-	pmxCluster.Agent = &agent
+	pmxCluster.Agent = agent
 	pmxCluster.Cluster = amz.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
 	amz.logout()
 	return pmxCluster

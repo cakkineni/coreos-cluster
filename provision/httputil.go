@@ -12,10 +12,16 @@ import (
 	"strings"
 )
 
-var (
-	httpClient = &http.Client{}
-	pool       *x509.CertPool
-)
+type HttpUtil struct {
+	APIEndPoint string
+	HttpClient  http.Client
+	Headers     []KeyValue
+}
+
+type KeyValue struct {
+	Key   string
+	Value string
+}
 
 type localCookieJar struct {
 	jar map[string][]*http.Cookie
@@ -29,29 +35,30 @@ func (p *localCookieJar) Cookies(u *url.URL) []*http.Cookie {
 	return p.jar[u.Host]
 }
 
-func init() {
-	pool = x509.NewCertPool()
+func NewHttpUtil() HttpUtil {
+	retVal := HttpUtil{}
+	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM(pemCerts)
-	httpClient = &http.Client{
+	retVal.HttpClient = http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{RootCAs: pool},
 		},
 	}
-
 	jar := &localCookieJar{}
 	jar.jar = make(map[string][]*http.Cookie)
-	httpClient.Jar = jar
+	retVal.HttpClient.Jar = jar
+	return retVal
 }
 
-func postJSONData(apiEndPoint string, params interface{}) string {
-	url1 := apiEndPoint
+func (httpUtil HttpUtil) doBasicAuth(url string, username string, password string, params interface{}) string {
+	url1 := httpUtil.APIEndPoint + url
 	postData, _ := json.Marshal(params)
 	reqData := strings.NewReader(string(postData[:]))
 	req, err := http.NewRequest("POST", url1, reqData)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
+	req.SetBasicAuth(username, password)
+	resp, err := httpUtil.HttpClient.Do(req)
 
 	if err != nil {
 		fmt.Printf("\n\nError : %s", err)
@@ -63,6 +70,34 @@ func postJSONData(apiEndPoint string, params interface{}) string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	debug(body, err)
+	return fmt.Sprintf("%s", body)
+}
+
+func (httpUtil HttpUtil) postJSONData(apiEndPoint string, params interface{}) string {
+	url1 := httpUtil.APIEndPoint + apiEndPoint
+	postData, _ := json.Marshal(params)
+	reqData := strings.NewReader(string(postData[:]))
+	req, err := http.NewRequest("POST", url1, reqData)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	for _, kv := range httpUtil.Headers {
+		req.Header.Add(kv.Key, kv.Value)
+	}
+
+	resp, err := httpUtil.HttpClient.Do(req)
+
+	if err != nil {
+		fmt.Printf("\n\nError : %s", err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	debug(body, err)
 	return fmt.Sprintf("%s", body)
 }
 

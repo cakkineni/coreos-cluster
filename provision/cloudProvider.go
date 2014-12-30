@@ -10,11 +10,13 @@ func New(providerType string) CloudProvider {
 	providerType = strings.ToLower(providerType)
 	switch providerType {
 	case "amz":
-		return Amazon{}.New()
+		return NewAmazon()
 	case "clc":
-		return CenturyLink{}.New()
+		return NewCenturyLink()
 	case "docean":
-		return DOcean{}.New()
+		return NewDOcean()
+	case "brightbox":
+		return NewBrightBox()
 	}
 	return nil
 }
@@ -26,7 +28,7 @@ type ClusterParams struct {
 }
 
 type PMXCluster struct {
-	Agent   *Server
+	Agent   Server
 	Cluster []Server
 }
 
