@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 func setKey(key string, value string) {
-	println("----BEGIN PANAMXAX DATA----%S=%S----END PANAMAX DATA----", key, value)
+	fmt.Printf("----BEGIN PANAMXAX DATA----%s=%s----END PANAMAX DATA----", key, value)
 }

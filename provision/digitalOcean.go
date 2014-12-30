@@ -6,6 +6,7 @@ import (
 	"github.com/digitalocean/godo"
 	"os"
 	"strconv"
+	"time"
 )
 
 var ()
@@ -101,7 +102,7 @@ func (doc *DOcean) provisionCoreOSCluster(count int, cloudConfig string) []Serve
 	for i := 0; i < count; i++ {
 		createReq.Name = "coreos-" + strconv.Itoa(i+1)
 		droplet := doc.createServer(createReq)
-		coreOSServers[i] = Server{Name: droplet.Droplet.Name, PublicIP: droplet.Droplet.Networks.V4[1].IPAddress, PrivateIP: droplet.Droplet.Networks.V4[0].IPAddress}
+		coreOSServers = append(coreOSServers, Server{Name: droplet.Droplet.Name, PublicIP: droplet.Droplet.Networks.V4[1].IPAddress, PrivateIP: droplet.Droplet.Networks.V4[0].IPAddress})
 	}
 	return coreOSServers
 }
@@ -127,6 +128,14 @@ func (doc *DOcean) createServer(createRequest *godo.DropletCreateRequest) *godo.
 
 	if err != nil {
 		panic(err)
+	}
+
+	for {
+		newDroplet, _, _ = doc.doClient.Droplets.Get(newDroplet.Droplet.ID)
+		if newDroplet.Droplet.Status == "active" {
+			break
+		}
+		time.Sleep(60 * time.Millisecond)
 	}
 	return newDroplet
 }
