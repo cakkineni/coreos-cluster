@@ -24,30 +24,48 @@ type BrightBox struct {
 func NewBrightBox() *BrightBox {
 	cl := new(BrightBox)
 	cl.bboxApi = "https://api.gb1.brightbox.com"
-	cl.httpUtil = NewHttpUtil()
+	cl.httpUtil = HttpUtil{APIEndPoint: cl.bboxApi}
 	return cl
 }
 
 func (bbox BrightBox) ProvisionPMXCluster(params ClusterParams) PMXCluster {
+	println("\nProvisioning PMX Cluster in Brightbox")
 	cluster := PMXCluster{}
+
+	println("\nInitializing")
 	bbox.initProvider()
+
+	println("\nLogging in to Brightbox")
 	loggedIn := bbox.login()
+
 	if !loggedIn {
 		panic("Login Failed!!")
 	}
 
-	bbox.groupName = bbox.createGroup(fmt.Sprintf("coreos-%s", bbox.randSeq(4)))
-	fwPolicyId := bbox.createFWPolicy("coreos", bbox.groupName)
+	println("\nProvisioning CoreOS cluster in Brightbox")
+	clusterName := fmt.Sprintf("coreos-%s", bbox.randSeq(4))
+
+	println("\nCreating server group:", clusterName)
+	bbox.groupName = bbox.createGroup(clusterName)
+
+	println("\nCreating Firewall Policy:", clusterName)
+	fwPolicyId := bbox.createFWPolicy(clusterName, bbox.groupName)
+
+	println("\nCreating Firewall Rules:", clusterName)
 	bbox.createFWRules(fwPolicyId)
-	println("\nProvisioning CoreOS cluster")
+
+	println("\nProvisioning CoreOS cluster...")
 	cluster.Cluster = bbox.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
+
 	println("\nProvisioning Panamax Remote Agent")
 	agent := bbox.createCoreOSServer("pmx_agent", params.CloudConfigAgent, "nano")
 	cluster.Agent = Server{Name: agent.Id, PrivateIP: agent.Interfaces[0].IP}
 	publicIP := bbox.addPublicIP(agent.Interfaces[0].ID)
 	cluster.Agent.PublicIP = publicIP
 
+	println("Logging Out...")
 	bbox.logout()
+
 	return cluster
 }
 
@@ -67,8 +85,6 @@ func (bbox *BrightBox) initProvider() bool {
 		panic("\n\nMissing Params...Check Docs....\n\n")
 	}
 
-	bbox.bboxApi = "https://api.gb1.brightbox.com"
-	bbox.httpUtil = HttpUtil{APIEndPoint: bbox.bboxApi}
 	return true
 }
 
@@ -80,7 +96,7 @@ func (bbox *BrightBox) login() bool {
 	}{bbox.apiKey, "none"}
 
 	_, err := json.Marshal(postData)
-	println("Logging in...")
+
 	if err != nil {
 		panic(err)
 	}
@@ -101,58 +117,46 @@ func (bbox *BrightBox) login() bool {
 }
 
 func (bbox *BrightBox) logout() bool {
-	println("\nLogging out...")
 	bbox.httpUtil.HttpClient.Get(bbox.bboxApi + "/auth/logout")
 	return true
 }
 
 func (bbox *BrightBox) provisionCoreOSCluster(count int, cloudConfig string) []Server {
-
 	var coreosServers []Server
 	for i := 0; i < count; i++ {
+		println("Provisioning Server ", i+1)
 		bboxServer := bbox.createCoreOSServer("coreos", cloudConfig, bbox.serverSize)
 		coreosServers = append(coreosServers, Server{Name: bboxServer.Id, PrivateIP: bboxServer.Interfaces[0].IP})
 	}
-
 	return coreosServers
 }
 
 func (bbox *BrightBox) createGroup(groupName string) string {
-	fmt.Printf("\nCreating Server Group in Data Center %s with name: %s", bbox.location, groupName)
-
 	var postData = struct {
 		Name string `json:"name"`
 	}{groupName}
-
 	var respNewGroup = bbox.httpUtil.postJSONData("/1.0/server_groups", postData)
 	var resp struct {
 		Id string `json:"id"`
 	}
 	json.Unmarshal([]byte(respNewGroup), &resp)
-
 	return resp.Id
 }
 
 func (bbox *BrightBox) createFWPolicy(policyName string, servergroupId string) string {
-	fmt.Printf("\nCreating Firewall Policy in Data Center %s with name: %s", bbox.location, policyName)
-
 	var postData = struct {
 		Group string `json:"server_group"`
 		Name  string `json:"name"`
 	}{servergroupId, policyName}
-
 	var respNewGroup = bbox.httpUtil.postJSONData("/1.0/firewall_policies", postData)
 	var resp struct {
 		Id string `json:"id"`
 	}
 	json.Unmarshal([]byte(respNewGroup), &resp)
-
 	return resp.Id
 }
 
 func (bbox *BrightBox) createFWRules(firewallPolicyId string) {
-	fmt.Printf("\nCreating Firewall Rules in Data Center %s with name: %s", bbox.location, bbox.groupName)
-
 	var postData = struct {
 		FirewallPolicy  string `json:"firewall_policy"`
 		Protocol        string `json:"protocol"`
@@ -184,8 +188,7 @@ func (bbox *BrightBox) addPublicIP(serverID string) string {
 		Destination string `json:"destination"`
 	}{serverID}
 
-	time.Sleep(20 * time.Second)
-
+	time.Sleep(10 * time.Second)
 	bbox.httpUtil.postJSONData(fmt.Sprintf("/1.0/cloud_ips/%s/map", cloudIP.Id), postDataMap)
 	return cloudIP.PublicIP
 }
@@ -208,7 +211,6 @@ func (bbox *BrightBox) createCoreOSServer(name string, cloudConfig string, vmSiz
 		UserData     string   `json:"user_data"`
 		ServerGroups []string `json:"server_groups"`
 	}{name, bbox.imageName, vmSize, bbox.location, cloudConfig, []string{bbox.groupName}}
-
 	var respNewGroup = bbox.httpUtil.postJSONData("/1.0/servers", postData)
 	var resp BBoxServer
 	json.Unmarshal([]byte(respNewGroup), &resp)
