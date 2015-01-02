@@ -28,18 +28,15 @@ type CenturyLink struct {
 	groupId           int
 	serverCount       int
 	httpUtil          HttpUtil
+	letters           []rune
 }
-
-var (
-	letters []rune
-)
 
 func NewCenturyLink() *CenturyLink {
 	cl := new(CenturyLink)
 	cl.clcApi = "https://api.tier3.com/rest"
 	cl.dhcpServerAlias = "DHCP"
 	cl.coreosServerAlias = "COREOS"
-	letters = []rune("abcdefghijklmnopqrstuvwxyz")
+	cl.letters = []rune("abcdefghijklmnopqrstuvwxyz")
 	return cl
 }
 
@@ -162,7 +159,7 @@ func (clc *CenturyLink) randSeq(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = clc.letters[rand.Intn(len(clc.letters))]
 	}
 	return string(b)
 }

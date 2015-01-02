@@ -70,7 +70,7 @@ func (httpUtil HttpUtil) doBasicAuth(url string, username string, password strin
 	if err != nil {
 		log.Fatal(err)
 	}
-	debug(body, err)
+	//debug(body, err)
 	return fmt.Sprintf("%s", body)
 }
 
@@ -97,7 +97,7 @@ func (httpUtil HttpUtil) postJSONData(apiEndPoint string, params interface{}) st
 	if err != nil {
 		log.Fatal(err)
 	}
-	debug(body, err)
+	//debug(body, err)
 	return fmt.Sprintf("%s", body)
 }
 
