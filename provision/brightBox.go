@@ -110,7 +110,6 @@ func (bbox *BrightBox) login() bool {
 	json.Unmarshal([]byte(resp), &status)
 	if status.AccessToken == "" {
 		panic("Login Failed, Please check credentials.")
-		return false
 	}
 	bbox.httpUtil.Headers = append(bbox.httpUtil.Headers, KeyValue{Key: "Authorization", Value: fmt.Sprintf("OAuth %s", status.AccessToken)})
 	return true
@@ -179,7 +178,7 @@ func (bbox *BrightBox) addPublicIP(serverID string) string {
 	}{"coreos"}
 	resp := bbox.httpUtil.postJSONData("/1.0/cloud_ips", postData)
 	var cloudIP struct {
-		Id       string `json:"cip-ysmni`
+		Id       string `json:"id"`
 		PublicIP string `json:"public_ip"`
 	}
 	json.Unmarshal([]byte(resp), &cloudIP)

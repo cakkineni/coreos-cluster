@@ -77,6 +77,8 @@ func (httpUtil HttpUtil) doBasicAuth(url string, username string, password strin
 func (httpUtil HttpUtil) postJSONData(apiEndPoint string, params interface{}) string {
 	url1 := httpUtil.APIEndPoint + apiEndPoint
 	postData, _ := json.Marshal(params)
+
+	//fmt.Printf("%+vs", params)
 	reqData := strings.NewReader(string(postData[:]))
 	req, err := http.NewRequest("POST", url1, reqData)
 	req.Header.Set("Accept", "application/json")
