@@ -29,23 +29,22 @@ func NewBrightBox() *BrightBox {
 }
 
 func (bbox BrightBox) ProvisionPMXCluster(params ClusterParams) PMXCluster {
-	println("\nProvisioning PMX Cluster in Brightbox")
+	println("\nProvisioning Cluster in Brightbox")
 	cluster := PMXCluster{}
 
 	println("\nInitializing")
 	bbox.initProvider()
 
-	println("\nLogging in to Brightbox")
+	println("\nLogging into Brightbox")
 	loggedIn := bbox.login()
 
 	if !loggedIn {
 		panic("Login Failed!!")
 	}
 
-	println("\nProvisioning CoreOS cluster in Brightbox")
 	clusterName := fmt.Sprintf("coreos-%s", bbox.randSeq(4))
 
-	println("\nCreating server group:", clusterName)
+	println("\nCreating Server Group:", clusterName)
 	bbox.groupName = bbox.createGroup(clusterName)
 
 	println("\nCreating Firewall Policy:", clusterName)
@@ -54,10 +53,10 @@ func (bbox BrightBox) ProvisionPMXCluster(params ClusterParams) PMXCluster {
 	println("\nCreating Firewall Rules:", clusterName)
 	bbox.createFWRules(fwPolicyId)
 
-	println("\nProvisioning CoreOS cluster...")
+	println("\nCreating CoreOS Cluster...")
 	cluster.Cluster = bbox.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
 
-	println("\nProvisioning Panamax Remote Agent")
+	println("\nDeploying Panamax Remote Agent server")
 	agent := bbox.createCoreOSServer("pmx_agent", params.CloudConfigAgent, "nano")
 	cluster.Agent = Server{Name: agent.Id, PrivateIP: agent.Interfaces[0].IP}
 	publicIP := bbox.addPublicIP(agent.Interfaces[0].ID)
@@ -82,7 +81,7 @@ func (bbox *BrightBox) initProvider() bool {
 	}
 
 	if bbox.apiKey == "" || bbox.apiPassword == "" || bbox.location == "" {
-		panic("\n\nMissing Params...Check Docs....\n\n")
+		panic("\n\nMissing Values. Ensure you have all environment variables needed to create cluster....\n\n")
 	}
 
 	return true
@@ -109,7 +108,7 @@ func (bbox *BrightBox) login() bool {
 
 	json.Unmarshal([]byte(resp), &status)
 	if status.AccessToken == "" {
-		panic("Login Failed, Please check credentials.")
+		panic("Login Failed. Please confirm credentials.")
 	}
 	bbox.httpUtil.Headers = append(bbox.httpUtil.Headers, KeyValue{Key: "Authorization", Value: fmt.Sprintf("OAuth %s", status.AccessToken)})
 	return true
