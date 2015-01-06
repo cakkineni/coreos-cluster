@@ -95,7 +95,7 @@ func (amz *Amazon) createFirewallRules() {
 	ports = strings.Split(amz.openPorts, ",")
 	for _, val := range ports {
 		port, err := strconv.Atoi(val)
-		if err != nil {
+		if err == nil {
 			perms = append(perms, ec2.IPPerm{Protocol: "TCP", ToPort: port, FromPort: port, SourceIPs: []string{"0.0.0.0/0"}})
 		}
 	}
