@@ -20,20 +20,3 @@ func New(providerType string) CloudProvider {
 	}
 	return nil
 }
-
-type ClusterParams struct {
-	ServerCount        int
-	CloudConfigCluster string
-	CloudConfigAgent   string
-}
-
-type PMXCluster struct {
-	Agent   Server
-	Cluster []Server
-}
-
-type Server struct {
-	PublicIP  string
-	PrivateIP string
-	Name      string
-}

@@ -1,10 +1,13 @@
 package provision
 
 import (
+	"fmt"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,6 +20,7 @@ type Amazon struct {
 	amiName        string
 	size           string
 	suffix         string
+	openPorts      string
 	securityGroups []ec2.SecurityGroup
 	amzClient      *ec2.EC2
 }
@@ -53,6 +57,7 @@ func (amz *Amazon) initProvider() bool {
 	amz.keyName = os.Getenv("SSH_KEY_NAME")
 	amz.size = os.Getenv("VM_SIZE")
 	amz.amiName = os.Getenv("AMI_NAME")
+	amz.openPorts = fmt.Sprintf("22,7001,4001,3001,%s", os.Getenv("OPEN_PORTS"))
 	amz.suffix = amz.randSeq(4)
 
 	if amz.amiName == "" {
@@ -86,7 +91,14 @@ func (amz *Amazon) createFirewallRules() {
 		panic(err)
 	}
 	var perms []ec2.IPPerm
-	perms = append(perms, ec2.IPPerm{Protocol: "TCP", ToPort: 22, FromPort: 22, SourceIPs: []string{"0.0.0.0/0"}})
+	var ports []string
+	ports = strings.Split(amz.openPorts, ",")
+	for _, val := range ports {
+		port, err := strconv.Atoi(val)
+		if err != nil {
+			perms = append(perms, ec2.IPPerm{Protocol: "TCP", ToPort: port, FromPort: port, SourceIPs: []string{"0.0.0.0/0"}})
+		}
+	}
 	_, err = amz.amzClient.AuthorizeSecurityGroup(resp.SecurityGroup, perms)
 	if err != nil {
 		panic(err)
@@ -99,8 +111,8 @@ func (amz *Amazon) provisionCoreOSCluster(count int, cloudConfig string) []Serve
 		ImageId:        amz.amiName,
 		InstanceType:   amz.size,
 		UserData:       []byte(cloudConfig),
-		MinCount:       count,
-		MaxCount:       count,
+		MinCount:       0,
+		MaxCount:       0,
 		KeyName:        amz.keyName,
 		AvailZone:      amz.location,
 		SecurityGroups: amz.securityGroups,
@@ -130,13 +142,10 @@ func (amz *Amazon) provisionPMXAgent(cloudConfig string) Server {
 }
 
 func (amz *Amazon) createServer(createRequest *ec2.RunInstances) Server {
-	var resp *ec2.RunInstancesResp
 	resp, err := amz.amzClient.RunInstances(createRequest)
-
 	if err != nil {
 		panic(err.Error())
 	}
-
 	server := resp.Instances[0]
 	println("Waiting for server creation to be complete..")
 	for {

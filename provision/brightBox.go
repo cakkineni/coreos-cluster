@@ -1,7 +1,7 @@
 package provision
 
 import (
-	base64 "encoding/base64"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -19,6 +19,7 @@ type BrightBox struct {
 	letters     []rune
 	httpUtil    HttpUtil
 	serverCount int
+	openPorts   string
 }
 
 func NewBrightBox() *BrightBox {
@@ -75,6 +76,7 @@ func (bbox *BrightBox) initProvider() bool {
 	bbox.imageName = os.Getenv("IMAGE")
 	bbox.serverSize = os.Getenv("VM_SIZE")
 	bbox.letters = []rune("abcdefghijklmnopqrstuvwxyz")
+	bbox.openPorts = fmt.Sprintf("22,7001,4001,3001,%s", os.Getenv("OPEN_PORTS"))
 
 	if bbox.imageName == "" {
 		bbox.imageName = "img-kpruj"
@@ -161,7 +163,7 @@ func (bbox *BrightBox) createFWRules(firewallPolicyId string) {
 		Protocol        string `json:"protocol"`
 		Source          string `json:"source"`
 		DestinationPort string `json:"destination_port"`
-	}{firewallPolicyId, "tcp", "any", "22,7001,4001,3001,8080,3306"}
+	}{firewallPolicyId, "tcp", "any", bbox.openPorts}
 
 	bbox.httpUtil.postJSONData("/1.0/firewall_rules", postData)
 	var postData2 = struct {
