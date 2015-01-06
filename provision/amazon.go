@@ -3,6 +3,7 @@ package provision
 import (
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -11,11 +12,13 @@ import (
 //go get launchpad.net/goamz/ec2
 
 type Amazon struct {
-	location  string
-	keyName   string
-	amiName   string
-	size      string
-	amzClient *ec2.EC2
+	location       string
+	keyName        string
+	amiName        string
+	size           string
+	suffix         string
+	securityGroups []ec2.SecurityGroup
+	amzClient      *ec2.EC2
 }
 
 func NewAmazon() *Amazon {
@@ -30,7 +33,11 @@ func (amz Amazon) ProvisionPMXCluster(params ClusterParams) PMXCluster {
 	println("\nLogging in to EC2")
 	amz.login()
 	println("\nProvisioning CoreOS cluster")
+
+	amz.createFirewallRules()
+
 	pmxCluster.Cluster = amz.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
+
 	println("\nProvisioning Panamax Remote Agent")
 	agent := amz.provisionPMXAgent(params.CloudConfigAgent)
 	pmxCluster.Agent = agent
@@ -46,6 +53,7 @@ func (amz *Amazon) initProvider() bool {
 	amz.keyName = os.Getenv("SSH_KEY_NAME")
 	amz.size = os.Getenv("VM_SIZE")
 	amz.amiName = os.Getenv("AMI_NAME")
+	amz.suffix = amz.randSeq(4)
 
 	if amz.amiName == "" {
 		amz.amiName = "ami-f469f29c"
@@ -72,15 +80,30 @@ func (amz *Amazon) logout() bool {
 	return true
 }
 
+func (amz *Amazon) createFirewallRules() {
+	resp, err := amz.amzClient.CreateSecurityGroup("coreos-"+amz.suffix, "CoreOS Cluster")
+	if err != nil {
+		panic(err)
+	}
+	var perms []ec2.IPPerm
+	perms = append(perms, ec2.IPPerm{Protocol: "TCP", ToPort: 22, FromPort: 22, SourceIPs: []string{"0.0.0.0/0"}})
+	_, err = amz.amzClient.AuthorizeSecurityGroup(resp.SecurityGroup, perms)
+	if err != nil {
+		panic(err)
+	}
+	amz.securityGroups = append(amz.securityGroups, resp.SecurityGroup)
+}
+
 func (amz *Amazon) provisionCoreOSCluster(count int, cloudConfig string) []Server {
 	createReq := &ec2.RunInstances{
-		ImageId:      amz.amiName,
-		InstanceType: amz.size,
-		UserData:     []byte(cloudConfig),
-		MinCount:     count,
-		MaxCount:     count,
-		KeyName:      amz.keyName,
-		AvailZone:    amz.location,
+		ImageId:        amz.amiName,
+		InstanceType:   amz.size,
+		UserData:       []byte(cloudConfig),
+		MinCount:       count,
+		MaxCount:       count,
+		KeyName:        amz.keyName,
+		AvailZone:      amz.location,
+		SecurityGroups: amz.securityGroups,
 	}
 
 	var coreOSServers []Server
@@ -93,13 +116,14 @@ func (amz *Amazon) provisionCoreOSCluster(count int, cloudConfig string) []Serve
 
 func (amz *Amazon) provisionPMXAgent(cloudConfig string) Server {
 	createReq := ec2.RunInstances{
-		ImageId:      amz.amiName,
-		InstanceType: amz.size,
-		UserData:     []byte(cloudConfig),
-		MinCount:     0,
-		MaxCount:     0,
-		KeyName:      amz.keyName,
-		AvailZone:    amz.location,
+		ImageId:        amz.amiName,
+		InstanceType:   amz.size,
+		UserData:       []byte(cloudConfig),
+		MinCount:       0,
+		MaxCount:       0,
+		KeyName:        amz.keyName,
+		AvailZone:      amz.location,
+		SecurityGroups: amz.securityGroups,
 	}
 
 	return amz.createServer(&createReq)
@@ -131,4 +155,14 @@ func (amz *Amazon) createServer(createRequest *ec2.RunInstances) Server {
 		server = resp.Reservations[0].Instances[0]
 	}
 	return Server{PublicIP: server.IPAddress, Name: server.DNSName, PrivateIP: server.PrivateIPAddress}
+}
+
+func (amz *Amazon) randSeq(n int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyz")
+	rand.Seed(time.Now().UnixNano())
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
