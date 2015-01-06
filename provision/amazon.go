@@ -96,8 +96,8 @@ func (amz *Amazon) provisionPMXAgent(cloudConfig string) Server {
 		ImageId:      amz.amiName,
 		InstanceType: amz.size,
 		UserData:     []byte(cloudConfig),
-		MinCount:     1,
-		MaxCount:     1,
+		MinCount:     0,
+		MaxCount:     0,
 		KeyName:      amz.keyName,
 		AvailZone:    amz.location,
 	}
