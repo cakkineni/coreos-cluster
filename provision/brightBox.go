@@ -191,7 +191,6 @@ func (bbox *BrightBox) addPublicIP(serverID string) string {
 
 	time.Sleep(20 * time.Second)
 	resp = bbox.httpUtil.postJSONData(fmt.Sprintf("/1.0/cloud_ips/%s/map", cloudIP.Id), postDataMap)
-	println("Map:", resp)
 	return cloudIP.PublicIP
 }
 

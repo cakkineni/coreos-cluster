@@ -10,6 +10,12 @@ import (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+		}
+	}()
+
 	println("Deploying PMX Cluster")
 	clusterHost, nodeCount, targetName := readParams()
 	clp := provision.New(clusterHost)

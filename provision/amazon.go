@@ -32,19 +32,21 @@ func NewAmazon() *Amazon {
 func (amz Amazon) ProvisionPMXCluster(params ClusterParams) PMXCluster {
 	println("\nProvisioning PMX Cluster in Amazon EC2")
 	pmxCluster := PMXCluster{}
+
 	println("\nInitializing")
 	amz.initProvider()
+
 	println("\nLogging in to EC2")
 	amz.login()
+
 	println("\nProvisioning CoreOS cluster")
-
 	amz.createFirewallRules()
-
 	pmxCluster.Cluster = amz.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
 
 	println("\nProvisioning Panamax Remote Agent")
 	agent := amz.provisionPMXAgent(params.CloudConfigAgent)
 	pmxCluster.Agent = agent
+
 	println("\nLogging out")
 	amz.logout()
 	return pmxCluster
@@ -144,7 +146,7 @@ func (amz *Amazon) provisionPMXAgent(cloudConfig string) Server {
 func (amz *Amazon) createServer(createRequest *ec2.RunInstances) Server {
 	resp, err := amz.amzClient.RunInstances(createRequest)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	server := resp.Instances[0]
 	println("Waiting for server creation to be complete..")
