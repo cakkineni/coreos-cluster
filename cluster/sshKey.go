@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 )
 
 func createSSHKey() (string, string) {
@@ -33,8 +32,8 @@ func createSSHKey() (string, string) {
 
 	pubBytes := ssh.MarshalAuthorizedKey(pub)
 
-	ioutil.WriteFile("key", []byte(privateKeyPem), 0777)
-	ioutil.WriteFile("key.pub", []byte(pubBytes), 0777)
+	//ioutil.WriteFile("key", []byte(privateKeyPem), 0777)
+	//ioutil.WriteFile("key.pub", []byte(pubBytes), 0777)
 
 	return string(privateKeyPem), string(pubBytes)
 }

@@ -9,48 +9,43 @@ import (
 	"time"
 )
 
-var (
-	cloudConfigCluster,
-	clusterType,
-	cloudConfigAgent string
-	serverCount int
-)
-
 func main() {
-
 	println("Deploying PMX Cluster")
-	clp := provision.New(clusterType)
+	clusterHost, nodeCount, targetName := readParams()
+	clp := provision.New(clusterHost)
 
 	println("Generating Cloud Config")
-	cloudConfigCluster = createCloudConfigCluster()
+	cloudConfigCluster := createCloudConfigCluster()
 	privateKey, publicKey := createSSHKey()
-	cloudConfigAgent = createCloudConfigAgent(publicKey)
+	cloudConfigAgent := createCloudConfigAgent(publicKey)
 
 	clusterParams := provision.ClusterParams{}
-	clusterParams.ServerCount = serverCount
+	clusterParams.ServerCount = nodeCount
 	clusterParams.CloudConfigAgent = cloudConfigAgent
 	clusterParams.CloudConfigCluster = cloudConfigCluster
 
 	println("Provisioning PMX Cluster")
 	cluster := clp.ProvisionPMXCluster(clusterParams)
-
 	fleetIP := cluster.Cluster[0].PrivateIP
 	agentIP := cluster.Agent.PublicIP
 
-	setKey("agent-pri-ssh-key", base64.StdEncoding.EncodeToString([]byte(privateKey)))
-	setKey("agent-fleet-api", fleetIP)
-	setKey("agent-public-ip", agentIP)
+	setKey("AGENT_PRIVATE_KEY", base64.StdEncoding.EncodeToString([]byte(privateKey)))
+	setKey("AGENT_FLEET_API", fleetIP)
+	setKey("AGENT_PUB_IP", agentIP)
+	setKey("REMOTE_TARGET_NAME", targetName)
 
 	println("Provisioning Complete!!!")
 	fmt.Scanln()
 	time.Sleep(2000 * time.Hour)
 }
 
-func init() {
-	serverCount, _ = strconv.Atoi(os.Getenv("NODE_COUNT"))
-	clusterType = os.Getenv("CLUSTER_HOST")
+func readParams() (string, int, string) {
+	nodeCount, _ := strconv.Atoi(os.Getenv("NODE_COUNT"))
+	clusterHost := os.Getenv("CLUSTER_HOST")
+	targetName := os.Getenv("REMOTE_TARGET_NAME")
 
-	if serverCount == 0 || clusterType == "" {
+	if nodeCount == 0 || clusterHost == "" || targetName == "" {
 		panic("\n\nMissing Params...Please Check Docs...\n\n")
 	}
+	return clusterHost, nodeCount, targetName
 }

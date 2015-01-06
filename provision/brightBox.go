@@ -1,6 +1,7 @@
 package provision
 
 import (
+	base64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -10,7 +11,6 @@ import (
 
 type BrightBox struct {
 	bboxApi     string
-	location    string
 	apiKey      string
 	apiPassword string
 	groupName   string
@@ -72,7 +72,6 @@ func (bbox BrightBox) ProvisionPMXCluster(params ClusterParams) PMXCluster {
 func (bbox *BrightBox) initProvider() bool {
 	bbox.apiKey = os.Getenv("CLIENT_ID")
 	bbox.apiPassword = os.Getenv("CLIENT_SECRET")
-	bbox.location = os.Getenv("REGION")
 	bbox.imageName = os.Getenv("IMAGE")
 	bbox.serverSize = os.Getenv("VM_SIZE")
 	bbox.letters = []rune("abcdefghijklmnopqrstuvwxyz")
@@ -81,7 +80,7 @@ func (bbox *BrightBox) initProvider() bool {
 		bbox.imageName = "img-kpruj"
 	}
 
-	if bbox.apiKey == "" || bbox.apiPassword == "" || bbox.location == "" {
+	if bbox.apiKey == "" || bbox.apiPassword == "" {
 		panic("\n\nMissing Params...Check Docs....\n\n")
 	}
 
@@ -125,6 +124,7 @@ func (bbox *BrightBox) provisionCoreOSCluster(count int, cloudConfig string) []S
 	for i := 0; i < count; i++ {
 		println("Provisioning Server ", i+1)
 		bboxServer := bbox.createCoreOSServer("coreos", cloudConfig, bbox.serverSize)
+		fmt.Printf("%+v", bboxServer)
 		coreosServers = append(coreosServers, Server{Name: bboxServer.Id, PrivateIP: bboxServer.Interfaces[0].IP})
 	}
 	return coreosServers
@@ -187,8 +187,9 @@ func (bbox *BrightBox) addPublicIP(serverID string) string {
 		Destination string `json:"destination"`
 	}{serverID}
 
-	time.Sleep(10 * time.Second)
-	bbox.httpUtil.postJSONData(fmt.Sprintf("/1.0/cloud_ips/%s/map", cloudIP.Id), postDataMap)
+	time.Sleep(20 * time.Second)
+	resp = bbox.httpUtil.postJSONData(fmt.Sprintf("/1.0/cloud_ips/%s/map", cloudIP.Id), postDataMap)
+	println("Map:", resp)
 	return cloudIP.PublicIP
 }
 
@@ -202,17 +203,17 @@ func (bbox *BrightBox) randSeq(n int) string {
 }
 
 func (bbox *BrightBox) createCoreOSServer(name string, cloudConfig string, vmSize string) BBoxServer {
+	b64CloudConfig := base64.StdEncoding.EncodeToString([]byte(cloudConfig))
 	var postData = struct {
 		Name         string   `json:"name"`
 		Image        string   `json:"image"`
 		ServerType   string   `json:"server_type"`
-		Zone         string   `json:"zone"`
 		UserData     string   `json:"user_data"`
 		ServerGroups []string `json:"server_groups"`
-	}{name, bbox.imageName, vmSize, bbox.location, cloudConfig, []string{bbox.groupName}}
-	var respNewGroup = bbox.httpUtil.postJSONData("/1.0/servers", postData)
+	}{name, bbox.imageName, vmSize, b64CloudConfig, []string{bbox.groupName}}
+	var respNewServer = bbox.httpUtil.postJSONData("/1.0/servers", postData)
 	var resp BBoxServer
-	json.Unmarshal([]byte(respNewGroup), &resp)
+	json.Unmarshal([]byte(respNewServer), &resp)
 	return resp
 }
 
