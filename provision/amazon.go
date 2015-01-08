@@ -23,18 +23,18 @@ func NewAmazon() *Amazon {
 }
 
 func (amz Amazon) ProvisionPMXCluster(params ClusterParams) PMXCluster {
-	println("\nProvisioning PMX Cluster in Amazon EC2")
+	println("\nProvisioning Cluster in Amazon EC2")
 	pmxCluster := PMXCluster{}
-	println("\nInitializing")
+	println("\nInitializing...")
 	amz.initProvider()
-	println("\nLogging in to EC2")
+	println("\nLogging into EC2...")
 	amz.login()
 	println("\nProvisioning CoreOS cluster")
 	pmxCluster.Cluster = amz.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
-	println("\nProvisioning Panamax Remote Agent")
+	println("\Deploying Panamax Remote Agent server")
 	agent := amz.provisionPMXAgent(params.CloudConfigAgent)
 	pmxCluster.Agent = agent
-	println("\nLogging out")
+	println("\nLogging out...")
 	amz.logout()
 	return pmxCluster
 }
@@ -52,7 +52,7 @@ func (amz *Amazon) initProvider() bool {
 	}
 
 	if apiToken == "" || apiPassword == "" || amz.location == "" || amz.size == "" || amz.amiName == "" {
-		panic("\n\nMissing Params Or No Matching AMI found...Check Docs...\n\n")
+		panic("\n\nMissing Values. Ensure you have all environment variables needed to create cluster...\n\n")
 	}
 	return true
 }
@@ -114,7 +114,7 @@ func (amz *Amazon) createServer(createRequest *ec2.RunInstances) Server {
 	}
 
 	server := resp.Instances[0]
-	println("Waiting for server creation to be complete..")
+	println("Waiting for server creation to be complete...")
 	for {
 		print(".")
 		time.Sleep(10 * time.Second)
