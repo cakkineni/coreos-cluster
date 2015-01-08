@@ -25,17 +25,16 @@ func NewDOcean() *DOcean {
 }
 
 func (doc DOcean) ProvisionPMXCluster(params ClusterParams) PMXCluster {
-	println("\nProvisioning PMX Cluster in Digital Ocean")
+	println("\nProvisioning Cluster in Digital Ocean")
 	cluster := PMXCluster{}
-	println("\nInitializing")
+	println("\nInitializing...")
 	doc.initProvider()
-	println("\nLogging in to Digital Ocean")
+	println("\nLogging into Digital Ocean")
 	doc.login()
-	println("\nProvisioning CoreOS cluster")
 	cluster.Cluster = doc.provisionCoreOSCluster(params.ServerCount, params.CloudConfigCluster)
-	println("\nProvisioning Panamax Remote Agent")
+	println("\nDeploying Panamax Remote Agent server")
 	cluster.Agent = doc.provisionPMXAgent(params.CloudConfigAgent)
-	println("\nLogging out")
+	println("\nLogging out...")
 	doc.logout()
 	return cluster
 }
@@ -47,7 +46,7 @@ func (doc *DOcean) initProvider() bool {
 	doc.size = os.Getenv("VM_SIZE")
 
 	if doc.apiToken == "" || doc.location == "" || doc.keyName == "" || doc.size == "" {
-		panic("\n\nMissing Params...Check Docs...\n\n")
+		panic("\n\nMissing Values. Ensure you have all environment variables needed to create cluster.\n\n")
 	}
 	return true
 }
@@ -87,7 +86,7 @@ func (doc *DOcean) getSSHKeyID() int {
 	}
 
 	if keyID == -1 {
-		panic(fmt.Sprintf("\n\nSSH Key Name not found. Please make sure it matches exactly to your setup (case sensitive)\n\n"))
+		panic(fmt.Sprintf("\n\nSSH Key Name not found. Please ensure your SSH Key Name matches exactly as shown in the Digital Ocean console (case sensitive).\n\n"))
 	}
 
 	return keyID
@@ -137,7 +136,7 @@ func (doc *DOcean) createServer(createRequest *godo.DropletCreateRequest) *godo.
 		panic(err)
 	}
 
-	println("Waiting for server creation to be complete..")
+	println("Waiting for server creation to be complete...")
 	for {
 		print(".")
 		newDroplet, _, _ = doc.doClient.Droplets.Get(newDroplet.Droplet.ID)
