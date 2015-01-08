@@ -59,7 +59,15 @@ func (amz *Amazon) initProvider() bool {
 	amz.keyName = os.Getenv("SSH_KEY_NAME")
 	amz.size = os.Getenv("VM_SIZE")
 	amz.amiName = os.Getenv("AMI_NAME")
-	amz.openPorts = fmt.Sprintf("22,7001,4001,3001,%s", os.Getenv("OPEN_PORTS"))
+	additionalPorts := os.Getenv("OPEN_TCP_PORTS")
+	defaultPorts := "22,7001,4001,30001"
+
+	if additionalPorts != "" {
+		amz.openPorts = fmt.Sprintf("%s,%s", defaultPorts, additionalPorts)
+	} else {
+		amz.openPorts = defaultPorts
+	}
+
 	amz.suffix = amz.randSeq(4)
 
 	if amz.amiName == "" {

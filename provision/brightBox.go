@@ -76,7 +76,14 @@ func (bbox *BrightBox) initProvider() bool {
 	bbox.imageName = os.Getenv("IMAGE")
 	bbox.serverSize = os.Getenv("VM_SIZE")
 	bbox.letters = []rune("abcdefghijklmnopqrstuvwxyz")
-	bbox.openPorts = fmt.Sprintf("22,7001,4001,3001,%s", os.Getenv("OPEN_PORTS"))
+	additionalPorts := os.Getenv("OPEN_TCP_PORTS")
+	defaultPorts := "22,7001,4001,30001"
+
+	if additionalPorts != "" {
+		bbox.openPorts = fmt.Sprintf("%s,%s", defaultPorts, additionalPorts)
+	} else {
+		bbox.openPorts = defaultPorts
+	}
 
 	if bbox.imageName == "" {
 		bbox.imageName = "img-kpruj"
